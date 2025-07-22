@@ -58,7 +58,7 @@ resource "azurerm_api_management_api" "internal_api" {
   revision            = "1"
   display_name        = "API de Servicios Internos"
   path                = "internal"
-  protocols           = ["httpss"]
+  protocols           = ["https"]
   service_url         = "http://api.example.com/internal"
 }
 
