@@ -1,14 +1,15 @@
-# api_platform.tf
-# Define los componentes principales de la plataforma: APIM y Application Gateway.
 
-# --- IP Pública para Application Gateway ---
+# api_platform.tf
+# Defines the core platform components: APIM and Application Gateway.
+
+# --- Public IP for Application Gateway ---
 resource "azurerm_public_ip" "appgw_pip" {
   name                = "pip-appgw-${var.env}"
   resource_group_name = azurerm_resource_group.spoke_rg.name
   location            = azurerm_resource_group.spoke_rg.location
   allocation_method   = "Static"
   sku                 = "Standard"
-  zones               = ["1", "2", "3"] # Para alta disponibilidad regional
+  zones               = ["1", "2", "3"] # For high availability
 }
 
 # --- API Management ---
@@ -18,20 +19,23 @@ resource "azurerm_api_management" "apim" {
   resource_group_name = azurerm_resource_group.spoke_rg.name
   publisher_name      = var.apim_publisher_name
   publisher_email     = var.apim_publisher_email
-  sku_name            = "Basicv2_1" # Corresponde al tier "Basic v2"
+  
+  # CORRECTED: SKU changed to "Developer_1" to support VNet integration.
+  sku_name            = "Developer_1"
 
   virtual_network_type = "External"
   virtual_network_configuration {
     subnet_id = azurerm_subnet.apim_snet.id
   }
 
+  # CORRECTED: Using a User-Assigned Identity to prevent race conditions.
   identity {
-    type = "SystemAssigned"
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.apim_identity.id]
   }
 
   depends_on = [
-    azurerm_network_security_group.apim_nsg,
-    azurerm_subnet_network_security_group_association.apim_nsg_assoc
+    azurerm_key_vault_access_policy.apim_policy
   ]
 }
 
@@ -53,6 +57,11 @@ resource "azurerm_application_gateway" "appgw" {
     rule_set_version         = "3.2"
   }
 
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.appgw_identity.id]
+  }
+
   gateway_ip_configuration {
     name      = "appgw-ip-config"
     subnet_id = azurerm_subnet.appgw_snet.id
@@ -69,8 +78,8 @@ resource "azurerm_application_gateway" "appgw" {
   }
 
   backend_address_pool {
-    name = "apim-backend-pool"
-    fqdns = [azurerm_api_management.apim.gateway_url]
+    name  = "apim-backend-pool"
+    fqdns = ["${azurerm_api_management.apim.name}.azure-api.net"]
   }
 
   backend_http_settings {
@@ -80,7 +89,7 @@ resource "azurerm_application_gateway" "appgw" {
     protocol              = "Https"
     request_timeout       = 30
     probe_name            = "apim-health-probe"
-    host_name             = azurerm_api_management.apim.gateway_url
+    host_name             = "${azurerm_api_management.apim.name}.azure-api.net"
   }
 
   http_listener {
@@ -89,6 +98,7 @@ resource "azurerm_application_gateway" "appgw" {
     frontend_port_name             = "port_443"
     protocol                       = "Https"
     ssl_certificate_name           = "kv-cert-integration"
+    host_name                      = "api.yourcompany.com" # Replace with your custom domain
   }
 
   request_routing_rule {
@@ -101,26 +111,22 @@ resource "azurerm_application_gateway" "appgw" {
 
   ssl_certificate {
     name                = "kv-cert-integration"
-    key_vault_secret_id = azurerm_key_vault.main.vault_uri
+    # NOTE: You must create a certificate in Key Vault and reference its secret ID.
+    key_vault_secret_id = "${azurerm_key_vault.main.vault_uri}secrets/placeholder-cert-name"
   }
 
-  health_probe {
+  probe {
     name                = "apim-health-probe"
     protocol            = "Https"
     path                = "/status-0123456789abcdef"
     interval            = 30
     timeout             = 30
     unhealthy_threshold = 3
-    host                = azurerm_api_management.apim.gateway_url
+    host                = "${azurerm_api_management.apim.name}.azure-api.net"
     pick_host_name_from_backend_http_settings = false
     match {
-      status_code = ["200-399"]
+      status_code = ["200"]
     }
-  }
-  
-  identity {
-    type = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.appgw_identity.id]
   }
   
   depends_on = [

@@ -1,38 +1,41 @@
+
 # variables.tf
-# Define todas las variables de entrada para la configuración, haciéndola reutilizable.
+# Defines input variables for the Terraform configuration.
 
 variable "env" {
-  description = "El entorno de despliegue (ej. dev, qas, prd)."
+  description = "The deployment environment (e.g., 'dev', 'qas', 'prd')."
   type        = string
+  default     = "dev"
 }
 
 variable "location" {
-  description = "La región de Azure para el despliegue."
+  description = "The Azure region where resources will be deployed."
   type        = string
 }
 
 variable "resource_group_name_prefix" {
-  description = "Prefijo para los nombres de los grupos de recursos."
+  description = "A prefix for the resource group names."
   type        = string
-  default     = "rg-apim-platform"
-}
-
-variable "hub_vnet_address_space" {
-  description = "Espacio de direcciones para la VNet del Hub."
-  type        = list(string)
-}
-
-variable "spoke_vnet_address_space" {
-  description = "Espacio de direcciones para la VNet del Spoke."
-  type        = list(string)
 }
 
 variable "apim_publisher_name" {
-  description = "Nombre del publicador para el servicio APIM."
+  description = "The name of the API Management publisher."
   type        = string
 }
 
 variable "apim_publisher_email" {
-  description = "Email del publicador para el servicio APIM."
+  description = "The email of the API Management publisher."
   type        = string
+}
+
+variable "hub_vnet_address_space" {
+  description = "The address space for the Hub VNet."
+  type        = list(string)
+  default     = ["172.16.128.0/24"]
+}
+
+variable "spoke_vnet_address_space" {
+  description = "The address space for the Spoke VNet."
+  type        = list(string)
+  default     = ["172.16.132.0/24"]
 }

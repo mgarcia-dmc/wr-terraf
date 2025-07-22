@@ -1,5 +1,6 @@
+
 # versions.tf
-# Bloquea las versiones de los proveedores para despliegues consistentes.
+# Locks provider versions for consistent deployments.
 terraform {
   required_version = ">= 1.3.0"
 
@@ -11,5 +12,5 @@ terraform {
   }
 }
 
-# Obtiene datos del cliente de Azure para configurar el tenant_id en Key Vault.
+# Gets Azure client data to set the tenant_id in Key Vault.
 data "azurerm_client_config" "current" {}
