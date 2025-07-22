@@ -1,0 +1,27 @@
+sequenceDiagram
+    actor Client as Cliente Externo
+    participant AppGW_Ext as Ingress App Gateway (con WAF)
+    participant APIM as Azure APIM (Basic)
+    participant AppGW_Int as Egress App Gateway (en VNet)
+    participant OnPrem as Backend On-Premise (vía VPN)
+
+    Client->>+AppGW_Ext: 1. Solicitud HTTPS
+    Note over AppGW_Ext: Aplica WAF para proteger a APIM
+
+    AppGW_Ext->>+APIM: 2. Reenvía solicitud válida y segura
+
+    rect rgb(235, 245, 255)
+    Note over APIM: 3. Valida Token (OAuth2) y aplica Políticas
+    end
+
+    APIM->>+AppGW_Int: 4. Llama al Reverse Proxy de salida
+    Note right of APIM: El backend de APIM apunta al<br/>App Gateway de salida
+    
+    Note over AppGW_Int: 5. Recibe la solicitud y la enruta<br/>hacia la IP privada On-Prem
+
+    AppGW_Int->>+OnPrem: 6. El tráfico viaja por el Túnel VPN seguro
+
+    OnPrem-->>-AppGW_Int: 7. Respuesta de la API
+    AppGW_Int-->>-APIM: 8. Respuesta de vuelta desde la VNet
+    APIM-->>-AppGW_Ext: 9. Respuesta final
+    AppGW_Ext-->>-Client: 10. Respuesta final al cliente

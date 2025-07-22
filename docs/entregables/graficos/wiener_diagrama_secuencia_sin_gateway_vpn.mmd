@@ -1,0 +1,23 @@
+sequenceDiagram
+    actor Client as Cliente
+    participant APIM as Azure APIM (Basic)
+    participant AppGW as App Gateway (Reverse Proxy en VNet)
+    participant VPNGW as VPN Gateway (en VNet HUB)
+    actor OnPremAPI as API On-Premise
+
+    Client->>+APIM: 1. Solicitud API
+    Note over APIM: Aplica políticas (OAuth2, etc.)
+    
+    APIM->>+AppGW: 2. Llama a IP pública de App Gateway
+    Note right of APIM: Backend de APIM apunta a App Gateway
+    
+    AppGW->>+VPNGW: 3. Reenvía a IP privada On-Prem
+    Note right of AppGW: Tráfico enrutado internamente en Azure
+
+    VPNGW->>+OnPremAPI: 4. Tráfico viaja por el Túnel VPN
+    
+    OnPremAPI-->>-VPNGW: 5. Respuesta de la API
+    VPNGW-->>-AppGW: 6. Respuesta via Túnel VPN
+    AppGW-->>-APIM: 7. Respuesta de vuelta
+    
+    APIM-->>-Client: 8. Respuesta final al cliente
